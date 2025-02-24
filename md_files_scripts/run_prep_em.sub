@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH -A standby --gpus-per-node=1 --ntasks=16 --nodes=1 --constraint=H
+#SBATCH -t 04:00:00#!/bin/bash
+source ~/.bashrc
+module load ngc/default
+module load gromacs/2021.3.lvs
+module load anaconda
+cp complex.top topol.top
+bash ./1_make_ndx_og_HOH.sh
+wait
+gmx editconf -f pdb2gmx.gro -o newbox.gro -bt cubic -d 1
+gmx solvate -cp newbox.gro -cs spc216.gro -p topol.top -o solv.gro 
+wait
+bash ./2_make_ndx_solvated.sh
+wait
+python ./3_add_HOH_to_solvated.py
+wait
+sed -i 's/\(CLA\)\( *\)\([0-9]*\)\(SOL *\)\([0-9]*\)/\1\2\3\n\4\5/' topol.top
+bash ./4_make_index_sol.sh
+wait
+gmx grompp -maxwarn 11 -f ions.mdp -c solv.gro -p topol.top -o ions.tpr 
+bash ./5_ions_prep.sh
+wait
+gmx grompp -f em.mdp -c solv_ions.gro -p topol.top -o em.tpr
+wait
+sbatch run_em.sub
+echo 'Energy minimization prep completed. Starting EM run now'

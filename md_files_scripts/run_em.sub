@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH -A standby --gpus-per-node=1 --ntasks=16 --nodes=1 --constraint=H
+#SBATCH -t 04:00:00
+source ~/.bashrc
+module load ngc/default
+module load gromacs/2021.3.lvs
+export OMP_NUM_THREADS=4  # Set the number of OpenMP threads
+gmx mdrun -v -deffnm em -nb gpu -ntmpi 16
+wait
+check=0
+while [ $check -lt 1 ]
+do
+        sleep 2m
+        check=$(grep -c Finished em.log)
+done
+sbatch run_nvt.sub
+echo 'Energy minimization completed. Starting NVT run now'

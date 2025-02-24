@@ -1,0 +1,18 @@
+#!/bin/bash
+for i in {0..100}
+do
+	h=$((i-1))
+	j=$((i+1))
+	k=$((j+1))
+	FILE=continue_md_$i'_'$j.sub
+	NAME=md_$i
+	touch $FILE
+	echo '#!/bin/bash' >>  $FILE
+	echo '#SBATCH -A standby --gpus-per-node=1 --ntasks=16 --nodes=1' >>  $FILE
+	echo 'cd ./'$NAME' '>>$FILE
+        echo 'if ! grep -q "Finished" tc-qmmm.out; then'>>$FILE
+        echo '    sbatch continue_standby_submit.sh'>>$FILE
+        echo 'fi'>>$FILE 
+        echo 'cd ../'>>$FILE
+        echo 'sbatch continue_md_'$j'_'$k'.sub'>>$FILE
+done

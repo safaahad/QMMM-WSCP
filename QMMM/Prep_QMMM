@@ -1,0 +1,51 @@
+#!/bin/bash
+for i in {0..100}
+do
+	h=$((i-1))
+	j=$((i+1))
+	k=$((j+1))
+	FILE=md_$i'_'$j.sub
+	DIR=md_$i'_'$j
+	NAME=md_$i
+	CPT=md_$h'_'$i
+	touch $FILE
+	echo '#!/bin/bash' >>  $FILE
+	echo '#SBATCH -A standby --gpus-per-node=1 --ntasks=16 --nodes=1' >>  $FILE
+	echo '#SBATCH -t 04:00:00' >> $FILE
+	echo 'source ~/.bashrc' >> $FILE
+	echo 'module load ngc/default' >> $FILE
+	echo 'module load gromacs/2021.3.lvs -gpu' >> $FILE
+	echo 'module load anaconda'>> $FILE
+	echo 'cd ../../100ns_md_runs/'$DIR'' >> $FILE 
+	echo 'mv *.xtc' $NAME'.xtc' >> $FILE
+	echo 'echo "1 0" |gmx trjconv -s '$DIR'.tpr -f '$NAME'.xtc -o '$NAME'_center.xtc -pbc mol -center' >> $FILE
+	echo 'wait' >> $FILE 
+	echo 'echo "0" | gmx traj -f '$NAME'_center.xtc  -s '$DIR'.tpr -oxt md_'$i'.g96 -b '$i' -e '$i' ' >> $FILE
+	echo 'wait' >> $FILE
+	echo 'cd ../../QMMM' >>$FILE
+	echo 'mkdir ./running_qmmm/'$NAME' '>> $FILE
+	echo 'cp ../files_qmmm/'$DIR'/'$NAME'.g96 ./running_qmmm/'$NAME' '>>$FILE
+	echo 'cp ../files_qmmm/'$DIR'/'$NAME'_center.xtc ./running_qmmm/'$NAME' '>>$FILE
+	echo 'cd ./running_qmmm/'$NAME' '>>$FILE
+	echo 'cp -r ../../files_qmmm/* ./'>> $FILE
+	echo 'cp -r ../../scripts_qmmm/* ./'>>$FILE
+	echo 'python cut_water_15A.py '$NAME'.g96'>>$FILE
+        echo 'wait'>>$FILE
+	echo 'python find_quantum_water.py 1_cut_waters_'$NAME'.g96'>>$FILE
+	echo 'wait'>>$FILE 
+	echo 'bash add_link_atoms.sh'>>$FILE
+	echo 'wait'>>$FILE
+	echo 'bash count_waters.sh'>>$FILE
+	echo 'wait' >>$FILE
+	echo 'python renumber_test.py 3_new_added_la_md.g96'>>$FILE
+        echo 'wait'>>$FILE
+	echo 'bash makendx.sh'>>$FILE
+	echo 'wait'>>$FILE
+	echo 'source ~/.bashrc'>>$FILE
+	echo 'wait'>>$FILE
+	echo 'grompp -f qmmm.mdp -maxwarn 10 -c qmmm_input_md.g96 -n index.ndx -p topol.top -o qmmm.tpr'>>$FILE
+	echo 'wait'>>$FILE
+        echo 'bash submit.sh'>>$FILE
+        echo 'cd ../'>>$FILE
+        echo 'sbatch md_'$j'_'$k'.sub'>>$FILE
+done

@@ -1,0 +1,35 @@
+#!/bin/bash
+#SBATCH -A standby --gpus-per-node=1 --ntasks=16 --nodes=1 --constraint=H
+#SBATCH -t 04:00:00
+source ~/.bashrc
+module load ngc/default
+module load gromacs/2021.3.lvs
+module load anaconda
+
+# Check if there's a checkpoint file for resuming the simulation
+if [ -f md_0_1.cpt ]; then
+    # If a checkpoint file exists, continue from the last checkpoint
+    gmx mdrun -v -deffnm md_0_1 -cpi md_0_1.cpt -nb gpu
+else
+    # If no checkpoint file exists, start the simulation from the beginning
+    gmx grompp -f md.mdp -c npt.gro -p topol.top -n index.ndx -o md_0_1.tpr
+    gmx mdrun -v -deffnm md_0_1 -nb gpu
+fi
+
+wait
+
+check=0
+while [ $check -lt 1 ]
+do
+    sleep 15m
+    check=$(grep -c Finished md*.log)
+done
+
+# If the simulation didn't finish within the time limit, resubmit the job to continue
+if [ $check -lt 1 ]; then
+    echo 'First Nanosecond of MD Production Run incomplete. Resubmitting job to continue.'
+else
+    sbatch preparing_md_prod_runs.sub
+    echo 'First Nanosecond of MD Production Run completed successfully.'
+fi
+

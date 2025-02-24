@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH -A standby --gpus-per-node=1 --ntasks=16 --nodes=1 --constraint=H
+#SBATCH -t 04:00:00
+source ~/.bashrc
+module load ngc/default
+module load gromacs/2021.3.lvs 
+module load anaconda
+gmx grompp -f npt.mdp -c nvt.gro -r nvt.gro -t nvt.cpt -p topol.top -n index.ndx -o npt.tpr
+wait
+gmx mdrun -v -deffnm npt -nb gpu 
+wait
+check=0
+while [ $check -lt 1 ]
+do
+        sleep 15m
+        check=$(grep -c Finished npt.log)
+done
+sbatch md_0_1.sub
+echo 'NPT minimization completed. Starting MD_Production_Run run now.'

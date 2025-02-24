@@ -1,0 +1,1 @@
+sbatch -A standby --nodes=1 --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=4 --constraint=G -t 04:00:00 --chdir=`pwd` --export TCJOB=qmmm  -J qmmm /depot/lslipche/apps/gromacs-tc/gromacs/bin/grommd-tc_new

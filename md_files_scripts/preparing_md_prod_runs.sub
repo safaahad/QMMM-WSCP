@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH -A standby --gpus-per-node=1 --ntasks=16 --nodes=1 --constraint=H
+#SBATCH -t 04:00:00
+source ~/.bashrc
+module load ngc/default
+module load gromacs/2021.3.lvs -gpu
+module load anaconda
+cp *.mdp *.top *.itp md_0_1* ../100ns/files_md
+cd ../100ns/100ns_md_runs/
+bash Generate1nsJobs
+wait
+sbatch md_1_2.sub
